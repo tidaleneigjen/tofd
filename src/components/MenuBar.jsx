@@ -11,7 +11,7 @@ export default function MenuBar() {
         </div>
 
         {/* Menu Items */}
-        <ul className="flex items-center gap-6 font-serif text-md text-gray-700">
+        <ul className="flex items-center gap-6 font-serif text-md text-gray-300">
           <li><a href="#" className="hover:text-blue-600">Home</a></li>
           <li><a href="#" className="hover:text-blue-600">About</a></li>
           <li><a href="#" className="hover:text-blue-600">Iseum Musicum</a></li>
