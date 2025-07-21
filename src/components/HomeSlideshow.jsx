@@ -61,14 +61,15 @@ export default function HomeSlideshow() {
 
   useEffect(() => {
     if (!isPaused) {
-      intervalRef.current = setInterval(goNext, 2000);
+      intervalRef.current = setInterval(goNext, 3000);
     }
     return () => clearInterval(intervalRef.current);
   }, [isPaused, currentIndex]);
 
   return (
     <div
-      className="relative w-full h-64 rounded-lg overflow-hidden shadow-lg group"
+      // className="relative w-full h-64 rounded-lg overflow-hidden shadow-lg group"
+      className='relative w-full h-[500px] rounded-lg overflow-hidden shadow-lg'
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -85,20 +86,17 @@ export default function HomeSlideshow() {
         />
       ))}
 
-      {/* Chevron: Prev */}
       <button
         onClick={goPrev}
-        className="absolute top-1/2 left-4 transform -translate-y-1/2 text-white text-3xl bg-black bg-opacity-40 p-2 rounded-full hover:bg-opacity-70 transition-opacity duration-300 opacity-0 group-hover:opacity-100"
-        aria-label="Previous Slide"
+        className='absolute top-1/2 left-4 transform -translate-y-1/2 z-30 bg-black bg-opacity-50 text-white text-4xl px-2 py-1 rounded-full shadow-lg hover:bg-opacity-70'
+        aria-label='Previous Slide'
       >
         ‹
       </button>
-
-      {/* Chevron: Next */}
       <button
         onClick={goNext}
-        className="absolute top-1/2 right-4 transform -translate-y-1/2 text-white text-3xl bg-black bg-opacity-40 p-2 rounded-full hover:bg-opacity-70 transition-opacity duration-300 opacity-0 group-hover:opacity-100"
-        aria-label="Next Slide"
+        className='absolute top-1/2 right-4 transform -translate-y-1/2 z-30 bg-black bg-opacity-50 text-white text-4xl px-2 py-1 rounded-full shadow-lg hover:bg-opacity-70'
+        aria-label='Next Slide'
       >
         ›
       </button>
