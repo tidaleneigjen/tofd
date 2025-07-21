@@ -1,11 +1,17 @@
 import MenuBar from "./components/MenuBar";
+import Header from "./components/Header";
+import Footer from "./components/Footer";
 import Home from "./pages/Home";
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="flex flex-col min-h-screen bg-white text-gray-900">
       <MenuBar />
-      <Home />
+      <Header />
+      <main className="flex-grow">
+        <Home />
+      </main>
+      <Footer />
     </div>
   );
 }

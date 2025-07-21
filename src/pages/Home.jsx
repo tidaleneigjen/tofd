@@ -1,9 +1,8 @@
 export default function Home() {
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-4">Welcome to TOFD</h1>
-      <p className="text-lg text-gray-700">
-        This is your homepage. You can add more sections, links, and features as you build.
+    <div className="max-w-5xl mx-auto px-4 py-8">
+      <p className="text-lg mb-4">
+        This is the main content area. Add sections, features, or components here.
       </p>
     </div>
   );
