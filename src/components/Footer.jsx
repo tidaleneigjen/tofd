@@ -2,16 +2,27 @@ import NewsletterSignupForm from "./NewsLetterSignupForm";
 
 export default function Footer() {
   return (
-    <footer className='w-full mt-12 text-gray-300 bg-transparent'>
-      {/* Newsletter Sign-Up Form */}
-      <NewsletterSignupForm />
+    <footer className="w-full mt-12 text-gray-300 bg-transparent px-4 py-6 font-serif">
+      <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-start md:items-center gap-8 justify-between">
+        {/* Newsletter Signup - fills remaining space */}
+        <div className="flex-grow w-full md:w-auto">
+          <NewsletterSignupForm />
+        </div>
 
-      {/* Contact Info Row */}
-      <div className='text-sm text-center md:text-left px-4 pb-6 flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8 flex-wrap'>
-        <span>© 2025 Temple of the Feminine Divine 501c3</span>
-        <span>PO BOX 218</span>
-        <span>Brooks, ME 04921</span>
-        <span>webgoddess@templeofthefemininedivine.org</span>
+        {/* Contact Info - aligned to the right */}
+        <div className="flex flex-col items-start md:items-end space-y-0 text-[0.8em] shrink-0 text-right">
+          <span>Temple of the Feminine Divine</span>
+          <span>PO Box 218, Brooks, Maine. 04921</span>
+          <span>
+            <a
+              href="mailto:webgoddess@templeofthefemininedivine.org"
+              className="underline hover:text-gray-100"
+            >
+              webgoddess@templeofthefemininedivine.org
+            </a>
+          </span>
+          <span>&copy; {new Date().getFullYear()} Temple of the Feminine Divine 501c3</span>
+        </div>
       </div>
     </footer>
   );
