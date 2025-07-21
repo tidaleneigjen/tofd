@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Slide from "./Slide";
 
 const slides = [
@@ -6,14 +6,16 @@ const slides = [
     title: "Labyrinth",
     image: "/public/labyrinth.jpg",
     imageTitle: "",
-    imageText: "Our ordained ministers are working hard to bring ideas and dreams to fruition for us all. Exciting things are happening.",
+    imageText:
+      "Our ordained ministers are working hard to bring ideas and dreams to fruition for us all. Exciting things are happening.",
     ctaText: "Learn More",
   },
   {
     title: "Temple News",
     image: "/public/window-tofd.jpg",
     imageTitle: "Monthly Business Meetings",
-    imageText: "Zoom online meetings for Temple Business are happening! See our facebook page for the link!",
+    imageText:
+      "Zoom online meetings for Temple Business are happening! See our facebook page for the link!",
     ctaText: "RSVP",
   },
   {
@@ -27,7 +29,8 @@ const slides = [
     title: "Temple News",
     image: "/public/window-tofd.jpg",
     imageTitle: "The Temple has moved!",
-    imageText: "The Temple is no longer at 31 Central St in Bangor, ME. Please see our blog post for more information.",
+    imageText:
+      "The Temple is no longer at 31 Central St in Bangor, ME. Please see our blog post for more information.",
     ctaText: "BLOG",
   },
   {
@@ -41,21 +44,34 @@ const slides = [
 
 export default function HomeSlideshow() {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const intervalRef = useRef(null);
 
-  function goPrev() {
+  const goPrev = () => {
     setCurrentIndex((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
-  }
+  };
 
-  function goNext() {
+  const goNext = () => {
     setCurrentIndex((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
-  }
+  };
 
-  function handleCtaClick() {
+  const handleCtaClick = () => {
     alert(`CTA clicked on slide: ${slides[currentIndex].title}`);
-  }
+  };
+
+  useEffect(() => {
+    if (!isPaused) {
+      intervalRef.current = setInterval(goNext, 2000);
+    }
+    return () => clearInterval(intervalRef.current);
+  }, [isPaused, currentIndex]);
 
   return (
-    <div className="relative w-full h-64 rounded-lg overflow-hidden shadow-lg">
+    <div
+      className="relative w-full h-64 rounded-lg overflow-hidden shadow-lg group"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
       {slides.map((slide, i) => (
         <Slide
           key={i}
@@ -69,16 +85,19 @@ export default function HomeSlideshow() {
         />
       ))}
 
+      {/* Chevron: Prev */}
       <button
         onClick={goPrev}
-        className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded"
+        className="absolute top-1/2 left-4 transform -translate-y-1/2 text-white text-3xl bg-black bg-opacity-40 p-2 rounded-full hover:bg-opacity-70 transition-opacity duration-300 opacity-0 group-hover:opacity-100"
         aria-label="Previous Slide"
       >
         ‹
       </button>
+
+      {/* Chevron: Next */}
       <button
         onClick={goNext}
-        className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded"
+        className="absolute top-1/2 right-4 transform -translate-y-1/2 text-white text-3xl bg-black bg-opacity-40 p-2 rounded-full hover:bg-opacity-70 transition-opacity duration-300 opacity-0 group-hover:opacity-100"
         aria-label="Next Slide"
       >
         ›
