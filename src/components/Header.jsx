@@ -1,9 +1,13 @@
 export default function Header() {
   return (
-    <header className="bg-gray-100 py-6 border-b border-gray-300">
-      <div className="max-w-5xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-800">Welcome to TOFD</h1>
-        <p className="text-gray-600 mt-2">This is the header area of your homepage.</p>
+    <header className="bg-red-600 py-8">
+      <div className="max-w-5xl mx-auto px-4 text-center">
+        <h1
+          className="text-6xl font-serif font-bold text-white"
+          style={{ textShadow: '3px 3px 8px rgba(0, 0, 0, 0.7)' }}
+        >
+          Temple of the Feminine Divine
+        </h1>
       </div>
     </header>
   );
