@@ -10,7 +10,7 @@ export default function NewsletterSignupForm() {
       <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full">
         <div className="flex items-center gap-4 w-full">
           <img
-            src="/pride heart.jpg"
+            src="/pride-heart.jpg"
             alt="Pride Heart"
             className="h-10 w-10 object-contain shrink-0"
           />
