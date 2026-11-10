@@ -8,6 +8,16 @@ variable "zone_name" {
   type        = string
 }
 
+variable "public_hostname" {
+  description = "Hostname for the public-site ACM certificate."
+  type        = string
+}
+
+variable "admin_hostname" {
+  description = "Hostname for the admin-app ACM certificate."
+  type        = string
+}
+
 variable "create_hosted_zone" {
   description = "Create a new hosted zone. Set false to use existing_zone_id instead."
   type        = bool

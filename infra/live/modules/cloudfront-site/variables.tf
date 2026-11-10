@@ -3,8 +3,13 @@ variable "project" {
   type        = string
 }
 
-variable "domain_name" {
-  description = "Apex domain name; www. and admin. subdomains are used as distribution aliases when enable_custom_domains = true."
+variable "public_hostname" {
+  description = "Hostname for the public site — used as the distribution alias when enable_custom_domains = true."
+  type        = string
+}
+
+variable "admin_hostname" {
+  description = "Hostname for the admin app — used as the distribution alias when enable_custom_domains = true."
   type        = string
 }
 
@@ -14,20 +19,20 @@ variable "api_domain_name" {
 }
 
 variable "enable_custom_domains" {
-  description = "Serve the distributions on www./admin. <domain_name> with ACM certs. MUST stay false until registrar NS records point at the Route 53 zone (Phase 4 cutover). When false, distributions use the default *.cloudfront.net certificate and have no aliases."
+  description = "Serve the distributions on the public/admin hostnames with ACM certs. MUST stay false until the hosted zone is publicly authoritative (Phase 4 cutover, or already-live zones). When false, distributions use the default *.cloudfront.net certificate and have no aliases."
   type        = bool
   default     = false
 }
 
 variable "public_cert_arn" {
-  description = "Validated ACM certificate ARN (us-east-1) for www.<domain_name>. Required when enable_custom_domains = true; ignored otherwise."
+  description = "Validated ACM certificate ARN (us-east-1) for the public hostname. Required when enable_custom_domains = true; ignored otherwise."
   type        = string
   default     = null
   nullable    = true
 }
 
 variable "admin_cert_arn" {
-  description = "Validated ACM certificate ARN (us-east-1) for admin.<domain_name>. Required when enable_custom_domains = true; ignored otherwise."
+  description = "Validated ACM certificate ARN (us-east-1) for the admin hostname. Required when enable_custom_domains = true; ignored otherwise."
   type        = string
   default     = null
   nullable    = true

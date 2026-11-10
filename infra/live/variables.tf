@@ -10,26 +10,38 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "domain_name" {
-  description = "Apex domain for the site (Route 53 hosted zone + ACM certs are created for www. and admin. subdomains)."
+variable "zone_name" {
+  description = "Apex domain for the Route 53 hosted zone. Public/admin hostnames default to its www./admin. subdomains unless overridden."
   type        = string
   default     = "templeofthefemininedivine.org"
 }
 
+variable "public_hostname" {
+  description = "Hostname for the public site (CloudFront alias, ACM cert, Route53 record). Defaults to www.<zone_name> when null — set explicitly for interim deployments on a different domain."
+  type        = string
+  default     = null
+}
+
+variable "admin_hostname" {
+  description = "Hostname for the admin app (CloudFront alias, ACM cert, Route53 record). Defaults to admin.<zone_name> when null."
+  type        = string
+  default     = null
+}
+
 variable "enable_custom_domains" {
-  description = "Serve the CloudFront distributions on www./admin.<domain_name> with ACM certs and create the Route53 alias records. MUST stay false until the registrar NS records for domain_name are repointed to the Route53 hosted zone (Phase 4 cutover) — ACM DNS validation cannot complete while the zone is not authoritative. When false, the sites are reachable only on their default *.cloudfront.net domains."
+  description = "Serve the CloudFront distributions on the public/admin hostnames with ACM certs and create the Route53 alias records. Keep false until the hosted zone for zone_name is publicly authoritative (registrar NS pointed at it) — ACM DNS validation cannot complete otherwise. When false, the sites are reachable only on their default *.cloudfront.net domains."
   type        = bool
   default     = false
 }
 
 variable "create_hosted_zone" {
-  description = "Create a new Route 53 hosted zone for domain_name. Set to false if a hosted zone already exists in this account (then set existing_hosted_zone_id)."
+  description = "Create a new Route 53 hosted zone for zone_name. Set to false if a hosted zone already exists in this account (then set existing_hosted_zone_id) — Terraform will then only manage records inside that zone, never the zone itself."
   type        = bool
   default     = true
 }
 
 variable "existing_hosted_zone_id" {
-  description = "ID of an existing Route 53 hosted zone for domain_name. Only used when create_hosted_zone = false."
+  description = "ID of an existing Route 53 hosted zone for zone_name. Only used when create_hosted_zone = false."
   type        = string
   default     = ""
 }

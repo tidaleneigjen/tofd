@@ -8,8 +8,8 @@ check "custom_domains_require_certs" {
 }
 
 locals {
-  public_alias = "www.${var.domain_name}"
-  admin_alias  = "admin.${var.domain_name}"
+  public_alias = var.public_hostname
+  admin_alias  = var.admin_hostname
 }
 
 # Managed cache/origin-request policies, looked up by name so we don't
@@ -25,7 +25,7 @@ data "aws_cloudfront_cache_policy" "caching_disabled" {
 # AllViewerExceptHostHeader is used instead of AllViewer for the /api/*
 # behavior: API Gateway HTTP API origins reject requests whose Host header
 # doesn't match the execute-api domain, and AllViewer would forward the
-# viewer's Host (www.templeofthefemininedivine.org).
+# viewer's Host (the site's public hostname).
 data "aws_cloudfront_origin_request_policy" "all_viewer_except_host_header" {
   name = "Managed-AllViewerExceptHostHeader"
 }
