@@ -30,3 +30,6 @@ admin_hostname          = "admin.tofd.graycandle.org"
 create_hosted_zone      = false
 existing_hosted_zone_id = "Z15A3OOMLRD544"
 enable_custom_domains   = true
+
+# First admin account — Cognito emails a temporary password on creation.
+admin_emails = ["justin.boss@gmail.com"]

@@ -1,6 +1,5 @@
-# Phase 0 scope: prove the pipeline end-to-end with placeholder resources.
-# The placeholder DynamoDB table is replaced by real content tables in
-# Phase 1 and can be deleted then.
+# MVP homepage CMS (Phase 1): pages table + authenticated page editor API.
+# Later phases add more content tables and routes.
 
 locals {
   # Effective hostnames: default to www./admin. subdomains of zone_name,
@@ -63,11 +62,12 @@ resource "aws_route53_record" "distribution_alias" {
   }
 }
 
-module "placeholder_table" {
+# Content store. One table per content type; Phase 1 has only pages.
+module "pages_table" {
   source = "./modules/dynamodb-table"
 
-  table_name = "${var.project}-placeholder"
-  hash_key   = "id"
+  table_name = "${var.project}-pages"
+  hash_key   = "slug"
 }
 
 module "api" {
@@ -77,11 +77,16 @@ module "api" {
   function_name = "${var.project}-api"
   source_dir    = "${path.root}/../../backend/.build/package"
 
-  table_name = module.placeholder_table.table_name
-  table_arn  = module.placeholder_table.table_arn
+  table_arns = [module.pages_table.table_arn]
   environment = {
-    TABLE_NAME = module.placeholder_table.table_name
+    PAGES_TABLE_NAME = module.pages_table.table_name
   }
+
+  cognito_user_pool_id  = module.cognito.user_pool_id
+  cognito_app_client_id = module.cognito.user_pool_client_id
+  # Only the admin app calls the API cross-origin; the public site uses
+  # same-origin /api/* through CloudFront.
+  cors_allowed_origins = ["https://${local.admin_hostname}"]
 }
 
 module "dns" {
@@ -117,5 +122,6 @@ module "site" {
 module "cognito" {
   source = "./modules/cognito"
 
-  project = var.project
+  project      = var.project
+  admin_emails = var.admin_emails
 }

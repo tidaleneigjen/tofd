@@ -13,20 +13,31 @@ variable "source_dir" {
   type        = string
 }
 
-variable "table_name" {
-  description = "Name of the DynamoDB table the function may access."
-  type        = string
-}
-
-variable "table_arn" {
-  description = "ARN of the DynamoDB table the function may access."
-  type        = string
+variable "table_arns" {
+  description = "ARNs of the DynamoDB tables the function may access."
+  type        = list(string)
 }
 
 variable "environment" {
   description = "Environment variables for the Lambda function."
   type        = map(string)
   default     = {}
+}
+
+variable "cognito_user_pool_id" {
+  description = "ID of the Cognito user pool whose ID tokens authorize PUT routes."
+  type        = string
+}
+
+variable "cognito_app_client_id" {
+  description = "App client ID used as the JWT authorizer audience."
+  type        = string
+}
+
+variable "cors_allowed_origins" {
+  description = "Origins allowed to call the API cross-origin (the admin app origin only)."
+  type        = list(string)
+  default     = []
 }
 
 variable "runtime" {

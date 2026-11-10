@@ -45,7 +45,7 @@ data "aws_iam_policy_document" "lambda_permissions" {
   }
 
   statement {
-    sid    = "DynamoDBPlaceholderTable"
+    sid    = "DynamoDBTables"
     effect = "Allow"
     actions = [
       "dynamodb:GetItem",
@@ -59,10 +59,9 @@ data "aws_iam_policy_document" "lambda_permissions" {
       "dynamodb:DescribeTable",
       "dynamodb:ConditionCheckItem",
     ]
-    resources = [
-      var.table_arn,
-      "${var.table_arn}/index/*",
-    ]
+    resources = flatten([
+      for arn in var.table_arns : [arn, "${arn}/index/*"]
+    ])
   }
 }
 
@@ -94,6 +93,29 @@ resource "aws_lambda_function" "api" {
 resource "aws_apigatewayv2_api" "api" {
   name          = "${var.project}-api"
   protocol_type = "HTTP"
+
+  # Only the admin app calls the API cross-origin; the public site uses
+  # same-origin /api/* through CloudFront and never hits CORS.
+  cors_configuration {
+    allow_origins = var.cors_allowed_origins
+    allow_methods = ["GET", "PUT", "OPTIONS"]
+    allow_headers = ["authorization", "content-type"]
+    max_age       = 3600
+  }
+}
+
+# JWT authorizer for authenticated routes (PUT /api/pages/{slug}). The
+# admin app sends its Cognito ID token as Authorization: Bearer <idToken>.
+resource "aws_apigatewayv2_authorizer" "cognito_jwt" {
+  api_id           = aws_apigatewayv2_api.api.id
+  name             = "${var.project}-cognito-jwt"
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+
+  jwt_configuration {
+    audience = [var.cognito_app_client_id]
+    issuer   = "https://cognito-idp.${data.aws_region.current.region}.amazonaws.com/${var.cognito_user_pool_id}"
+  }
 }
 
 resource "aws_apigatewayv2_integration" "lambda" {
@@ -107,6 +129,20 @@ resource "aws_apigatewayv2_route" "health" {
   api_id    = aws_apigatewayv2_api.api.id
   route_key = "GET /api/health"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "get_page" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api/pages/{slug}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "put_page" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "PUT /api/pages/{slug}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_jwt.id
 }
 
 resource "aws_apigatewayv2_stage" "default" {

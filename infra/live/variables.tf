@@ -51,3 +51,9 @@ variable "price_class" {
   type        = string
   default     = "PriceClass_100"
 }
+
+variable "admin_emails" {
+  description = "Email addresses that get a Cognito admin account for the admin app. Each receives a temporary password by email on creation (valid 7 days). Add more emails here to grant access; removing one does not delete the Cognito user."
+  type        = list(string)
+  default     = []
+}

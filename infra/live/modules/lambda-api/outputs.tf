@@ -22,3 +22,8 @@ output "api_domain_name" {
   description = "Bare domain of the API endpoint, for use as a CloudFront custom origin."
   value       = trimprefix(aws_apigatewayv2_api.api.api_endpoint, "https://")
 }
+
+output "api_base_url" {
+  description = "Base URL of the API for direct calls (admin app). No trailing slash, no stage prefix — the $default stage is used."
+  value       = aws_apigatewayv2_api.api.api_endpoint
+}
