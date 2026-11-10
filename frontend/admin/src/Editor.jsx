@@ -16,7 +16,7 @@ export default function Editor({ onSignedOut }) {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/pages/home`);
+        const res = await fetch(`${API_BASE_URL}/api/pages/home`);
         if (cancelled) return;
         if (res.status === 404) {
           // No page saved yet — prefill defaults, don't save until the user does.
@@ -74,7 +74,7 @@ export default function Editor({ onSignedOut }) {
       // title isn't editable in Phase 1, but preserve it if one exists.
       if (form.title) payload.title = form.title;
 
-      const res = await fetch(`${API_BASE_URL}/pages/home`, {
+      const res = await fetch(`${API_BASE_URL}/api/pages/home`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${idToken}`,
