@@ -69,7 +69,7 @@ Rather than hand-rolling authentication (as `anududley.com` did with custom toke
 2. **Admin app** (`admin.templeofthefemininedivine.org`): a separate, simpler CloudFront → S3 distribution for the admin SPA. It calls the same API Gateway cross-origin (CORS configured to allow this one additional origin).
 
 ### Domain/DNS approach
-Route 53 hosted zone and ACM certificates are created **early** (Phase 0) since they don't affect the live Wix site until nameservers are actually switched at the registrar. **Nameserver cutover is an explicit, separate, human-approved step at go-live (end of Phase 4)** — not something any phase's automation does on its own, to avoid accidentally taking down the live site mid-build.
+Route 53 hosted zone and ACM certificates are created **early** (Phase 0) since they don't affect the live Wix site until nameservers are actually switched at the registrar. Because ACM DNS validation cannot complete while the new hosted zone is not yet publicly authoritative, the certificates, CloudFront aliases, and DNS alias records are gated behind an `enable_custom_domains` Terraform variable that stays `false` until after cutover — it is flipped via a normal PR to `main` once NS propagation is confirmed. **Nameserver cutover is an explicit, separate, human-approved step at go-live (end of Phase 4)** — not something any phase's automation does on its own, to avoid accidentally taking down the live site mid-build.
 
 ---
 
