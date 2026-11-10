@@ -14,7 +14,7 @@ Prove the **entire content pipeline** end-to-end on the smallest possible scope:
 
 **Scope is deliberately narrow: only the homepage.** Do not build editing for any other page in this phase, even though the data model you build should be reusable for them later (see Section 2 below) — that reuse happens in Phase 2, not now.
 
-**Out of scope for this phase:** any page other than Home, Events, News/Posts, rich media galleries, social embeds, or anything from the old Wix site's "Shop"/"Library"/membership content. Keep the homepage content itself simple: a hero section (image + heading + short mission statement) and a single rich-text body area — do not try to replicate every pixel of the old Wix homepage.
+**Out of scope for this phase:** any page other than Home, Events, News/Posts, rich media galleries, social embeds, or anything from the old Wix site's "Shop"/"Library"/membership content. Keep the homepage content itself simple: a hero section (image + heading + short mission statement) and a single plain-text body area (paragraphs separated by blank lines — no rich text yet) — do not try to replicate every pixel of the old Wix homepage.
 
 ---
 
@@ -25,7 +25,9 @@ Even though this phase only exposes editing for the homepage, design the table g
 1. In `infra/live/`, replace the Phase 0 placeholder DynamoDB table with a new table `tofd-pages`:
    - Hash key: `slug` (String) — e.g. `"home"`.
    - `PAY_PER_REQUEST` billing.
-   - Attributes (not all required to be in the key schema, just the item shape your application code will read/write): `slug`, `title`, `heroImageUrl`, `heroHeading`, `missionStatement`, `body` (rich text, stored as a string — plain HTML or Markdown, your choice, but be consistent and document which one in `backend/src/README.md`), `updatedAt`, `updatedBy`.
+   - Attributes (not all required to be in the key schema, just the item shape your application code will read/write): `slug`, `title` (optional), `heroImageUrl` (optional — stored by the API, not editable in the Phase 1 UI), `heroHeading` (required), `missionStatement` (required), `body` (required, **plain text** — paragraphs separated by blank lines, never rendered as HTML; always stored with `bodyFormat: "text"` so Phase 2 can add other formats), `updatedAt`, `updatedBy`.
+   - API-enforced limits: `heroHeading` ≤ 200 chars, `missionStatement` ≤ 2000, `body` ≤ 20000, `title` ≤ 200. Unknown fields, wrong types, and missing required fields are rejected with 400 plus a human-readable error list.
+   - The slug allow-list is exactly `{"home"}` in Phase 1 (a constant in the Lambda, widened in Phase 2); GET/PUT for any other slug return 404.
 2. Remove the Phase 0 `tofd-placeholder` table and its references once the new table is in place and working — don't leave unused infrastructure behind.
 
 ## Step 2: Backend API
@@ -35,18 +37,17 @@ Extend the existing single Lambda function (Powertools resolver) from Phase 0 wi
 | Method | Path | Auth | Behavior |
 |---|---|---|---|
 | `GET` | `/api/pages/{slug}` | None (public) | Fetch a single page item from `tofd-pages` by `slug`. Return 404 if not found. |
-| `PUT` | `/api/pages/{slug}` | **Cognito JWT required** | Upsert the page item. Validate the request body has the expected fields (reject unknown/missing required fields with a 400, don't silently accept garbage). Set `updatedAt` server-side (don't trust a client-supplied timestamp) and `updatedBy` from the authenticated user's identity (available in the Cognito JWT claims passed through by API Gateway). |
+| `PUT` | `/api/pages/{slug}` | **Cognito JWT required** | Upsert the page item. Validate the request body has the expected fields (reject unknown/missing required fields with a 400, don't silently accept garbage — client-supplied `updatedAt`/`updatedBy`/`bodyFormat` are rejected as unknown fields). Set `updatedAt` server-side in ISO UTC (don't trust a client-supplied timestamp) and `updatedBy` from the JWT `email` claim, falling back to `sub`. |
 
-1. Configure the API Gateway HTTP API's JWT authorizer against the Cognito User Pool created in Phase 0, and attach it specifically to the `PUT` route (not the `GET` route — the public site needs unauthenticated reads).
+1. Configure the API Gateway HTTP API's JWT authorizer against the Cognito User Pool created in Phase 0 (issuer `https://cognito-idp.<region>.amazonaws.com/<pool_id>`, audience = the app client ID), and attach it specifically to the `PUT` route (not the `GET` route — the public site needs unauthenticated reads). Defense in depth: the Lambda itself returns 401 if a PUT arrives without `requestContext.authorizer.jwt.claims`.
+2. CORS: the HTTP API allows only the admin origin (`https://<admin_hostname>`; methods `GET,PUT,OPTIONS`; headers `authorization,content-type`; `max_age` 3600). The admin app calls the API Gateway invoke URL directly (new `api_base_url` Terraform output, no stage prefix — the `$default` stage is used). The public site keeps calling same-origin `/api/*` through CloudFront and never hits CORS.
 2. Add unit tests in `backend/tests/` covering: successful GET of an existing page, 404 for a missing page, successful PUT with a valid JWT, 401/403 for PUT without a valid JWT, and 400 for a malformed PUT body.
 3. Update the Lambda's IAM execution role (via Terraform) to grant read/write on `tofd-pages` and remove the now-unused placeholder table permissions.
 
 ## Step 3: Cognito — Create One Real Admin User
 
-1. In `infra/live`'s Cognito module, this phase is where you actually need a logged-in user to test with. **Do not hardcode a password in Terraform or in any committed file.** Instead:
-   - Either add a `null_resource`/local-exec step that creates a user via `aws cognito-idp admin-create-user` with a temporary password that must be changed on first login (and document this as a one-time manual step the human runs, similar in spirit to the Phase 0 bootstrap exception), **or**
-   - Document clearly in `infra/live/README.md` that after this phase's first deploy, the human needs to run a one-line AWS CLI command to create the first admin user (give the exact command, with the pool ID coming from a Terraform output).
-2. Either approach is fine — the point is: no credentials in git, ever, and the process for creating the first admin is documented, not ad-libbed later.
+1. Create admin users **in Terraform**: a root variable `admin_emails` (list(string), default `[]`, set in committed `infra/live/terraform.tfvars`) is wired into the Cognito module, which creates one `aws_cognito_user` per email (attributes `email` + `email_verified=true`, `desired_delivery_mediums = ["EMAIL"]`, and **no `password` argument** — Cognito generates a temporary password and emails it; nothing secret is stored in state or git).
+2. Document in `infra/live/README.md`: the temporary password arrives by email (check spam), expires in 7 days (`temporary_password_validity_days` on the pool); to resend it, taint/recreate the user or use the console "resend invitation"; adding future admins = append to `admin_emails`.
 
 ## Step 4: Admin App — Minimal Homepage Editor
 
@@ -54,9 +55,9 @@ In `frontend/admin/`:
 
 1. Add Cognito authentication using AWS Amplify's Auth library or `amazon-cognito-identity-js` (pick one, Amplify is more batteries-included and reduces hand-rolled token-refresh code — prefer it unless there's a strong reason not to). Configure it with the Cognito User Pool ID and App Client ID from Terraform outputs (passed into the frontend build as environment variables — do not hardcode them, but note these are not secrets, they're public client identifiers safe to bundle into a static build).
 2. Build a login page (email + password form, using the Cognito flow — handle the "force change password" state for the first login from Step 3 since that user starts with a temporary password).
-3. After login, show a single form: "Edit Homepage" with fields for hero heading, mission statement, and body (a plain `<textarea>` is acceptable for this phase — do not integrate a rich text editor library yet, that's a reasonable Phase 2 upgrade once there's more than one page to justify the dependency).
-4. On load, `GET /api/pages/home` and populate the form (handle the case where it doesn't exist yet — show an empty form, don't crash).
-5. On save, `PUT /api/pages/home` with the form data and the user's Cognito JWT in the `Authorization` header. Show a clear success/error message — this is for a non-technical editor, so error states need to be human-readable, not raw stack traces or HTTP status codes.
+3. After login, show a single form: "Edit Homepage" with fields for hero heading, mission statement, and body (a plain `<textarea>` is acceptable for this phase — do not integrate a rich text editor library yet, that's a reasonable Phase 2 upgrade once there's more than one page to justify the dependency). `heroImageUrl` is stored by the API but deliberately not editable in this UI.
+4. On load, `GET ${VITE_API_BASE_URL}/pages/home`: if it 404s, prefill the form with the default-copy module (the live Wix homepage text, flagged "confirm with the Temple") — do **not** save until the user presses Save. Configure Amplify Auth (`signIn`, `confirmSignIn` for the forced new-password step, `fetchAuthSession` for the ID token, `signOut`) from `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_APP_CLIENT_ID`, `VITE_API_BASE_URL` (public identifiers, not secrets — see `.env.example`).
+5. On save, `PUT ${VITE_API_BASE_URL}/pages/home` with the form data and the user's Cognito **ID token** as `Authorization: Bearer <idToken>` (success banner: "Saved — your changes are live on the site"). Show a clear success/error message — this is for a non-technical editor, so error states need to be human-readable, not raw stack traces or HTTP status codes.
 6. Add a logout button.
 
 ## Step 5: Public Site — Render the Homepage from the CMS
@@ -66,11 +67,11 @@ In `frontend/public-site/`:
 1. Replace the Phase 0 placeholder page with a real homepage component that calls `GET /api/pages/home` (same-origin via CloudFront's `/api/*` behavior from Phase 0 — no CORS configuration needed here) and renders: hero image + heading, mission statement, and the body content.
 2. Handle the loading and "not yet created" states gracefully (e.g., if nobody has saved homepage content yet, show a simple fallback rather than a blank page or an error).
 3. Keep styling minimal and clean — this is not the final design pass, just enough to look like a real, presentable page for the feedback checkpoint below. Don't invest heavily in visual design yet; that's better done once the Temple has given input in the checkpoint meeting.
-4. Use one of the preserved legacy images from `planning/assets/legacy-images/` as the hero image if it fits, or a simple placeholder if none do — flag this choice for discussion in the feedback checkpoint rather than treating it as final.
+4. Hero image: `planning/assets/legacy-images/temple-ritual.jpg` is copied to `frontend/public-site/public/` and used as the default when the page item has no `heroImageUrl`. Render `body` as plain-text paragraphs split on blank lines — text nodes only, never `dangerouslySetInnerHTML`. Set `<title>` to "Temple of the Feminine Divine".
 
 ## Step 6: Seed Real Content (If Available)
 
-If meeting notes or decisions exist from `planning/2026-10-25-first-meeting-agenda.md` (check whether that meeting has happened and whether notes were added to `planning/2026-09-22-tofd-migration-plan.md`'s content inventory), use the agreed mission statement/homepage copy as the first real content saved through the admin app. If no such notes exist yet, use clearly-labeled placeholder copy (e.g., "[PLACEHOLDER — confirm wording with the Temple]") rather than inventing permanent-sounding copy on your own.
+The agreed homepage copy is not yet confirmed by the Temple. Both apps carry the same default-copy module containing the live Wix homepage text, flagged in code comments as "confirm with the Temple". When the Temple confirms wording, update the defaults module and/or save corrected content through the admin app. No placeholder-labeled copy is used.
 
 ---
 
