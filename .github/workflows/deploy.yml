@@ -62,6 +62,9 @@ jobs:
             echo "admin_bucket=$(terraform output -raw admin_site_bucket_name)"
             echo "public_dist=$(terraform output -raw public_distribution_id)"
             echo "admin_dist=$(terraform output -raw admin_distribution_id)"
+            echo "cognito_user_pool_id=$(terraform output -raw cognito_user_pool_id)"
+            echo "cognito_app_client_id=$(terraform output -raw cognito_app_client_id)"
+            echo "api_base_url=$(terraform output -raw api_base_url)"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build public site
@@ -79,6 +82,10 @@ jobs:
 
       - name: Build admin app
         working-directory: frontend/admin
+        env:
+          VITE_COGNITO_USER_POOL_ID: ${{ steps.tf.outputs.cognito_user_pool_id }}
+          VITE_COGNITO_APP_CLIENT_ID: ${{ steps.tf.outputs.cognito_app_client_id }}
+          VITE_API_BASE_URL: ${{ steps.tf.outputs.api_base_url }}
         run: npm ci && npm run build
 
       - name: Sync admin app to S3
