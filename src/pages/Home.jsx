@@ -1,13 +1,16 @@
-import HomeSlideshow from "../components/HomeSlideshow"
-import HomeColumn from "../components/HomeColumn"
+import Carousel from "../components/Carousel";
+import HomeColumn from "../components/HomeColumn";
 
 export default function Home() {
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 flex flex-col md:flex-row gap-8">
-      <div className="md:flex-2 md:basis-2/3">
-        <HomeSlideshow />
+    <div className="flex flex-row gap-4 w-full">
+      {/* Carousel - 3/4 width */}
+      <div className="w-3/4">
+        <Carousel />
       </div>
-      <div className="md:flex-1 md:basis-1/3">
+
+      {/* Text Column - 1/4 width */}
+      <div className="w-1/4">
         <HomeColumn />
       </div>
     </div>

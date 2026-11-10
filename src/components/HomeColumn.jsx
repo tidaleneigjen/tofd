@@ -1,8 +1,8 @@
 export default function HomeColumn() {
   return (
-    <div className='font-serif text-lg'>
-      <h2 className='mb-4 text-2xl font-bold'>About Us</h2>
-      <p>
+    <div className="bg-slate-900 bg-opacity-80 p-4 rounded-lg shadow-md text-white">
+      <h2 className="text-xl font-semibold mb-2">Welcome to the Temple</h2>
+      <p className="text-sm">
         Under the guardianship of ordained clergy, the Temple of the Feminine
         Divine is a spiritual community that supports one another on our paths
         of Earth Based Spirituality. We honor Mother Nature and encourage
