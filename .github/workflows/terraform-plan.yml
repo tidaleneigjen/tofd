@@ -1,0 +1,43 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+    paths:
+      - "infra/live/**"
+      - "backend/**"
+      - ".github/workflows/terraform-plan.yml"
+
+permissions:
+  id-token: write # required for OIDC role assumption
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # archive_file reads backend/.build/package at plan time.
+      - name: Build Lambda package
+        run: backend/build.sh
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.x"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        working-directory: infra/live
+        run: terraform init -backend-config=backend.hcl -input=false
+
+      - name: Terraform Plan
+        working-directory: infra/live
+        run: terraform plan -no-color -input=false

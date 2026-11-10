@@ -1,0 +1,86 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write # required for OIDC role assumption
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # archive_file reads backend/.build/package at plan/apply time.
+      - name: Build Lambda package
+        run: backend/build.sh
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.x"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            frontend/public-site/package-lock.json
+            frontend/admin/package-lock.json
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        working-directory: infra/live
+        run: terraform init -backend-config=backend.hcl -input=false
+
+      - name: Terraform Apply
+        working-directory: infra/live
+        run: terraform apply -auto-approve -input=false
+
+      - name: Read Terraform outputs
+        id: tf
+        working-directory: infra/live
+        run: |
+          {
+            echo "public_bucket=$(terraform output -raw public_site_bucket_name)"
+            echo "admin_bucket=$(terraform output -raw admin_site_bucket_name)"
+            echo "public_dist=$(terraform output -raw public_distribution_id)"
+            echo "admin_dist=$(terraform output -raw admin_distribution_id)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build public site
+        working-directory: frontend/public-site
+        run: npm ci && npm run build
+
+      - name: Sync public site to S3
+        run: aws s3 sync frontend/public-site/dist "s3://${{ steps.tf.outputs.public_bucket }}" --delete
+
+      - name: Invalidate public site CloudFront cache
+        run: >-
+          aws cloudfront create-invalidation
+          --distribution-id ${{ steps.tf.outputs.public_dist }}
+          --paths "/*"
+
+      - name: Build admin app
+        working-directory: frontend/admin
+        run: npm ci && npm run build
+
+      - name: Sync admin app to S3
+        run: aws s3 sync frontend/admin/dist "s3://${{ steps.tf.outputs.admin_bucket }}" --delete
+
+      - name: Invalidate admin CloudFront cache
+        run: >-
+          aws cloudfront create-invalidation
+          --distribution-id ${{ steps.tf.outputs.admin_dist }}
+          --paths "/*"

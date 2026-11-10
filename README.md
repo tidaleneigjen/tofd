@@ -1,0 +1,73 @@
+# Temple of the Feminine Divine — Website
+
+Rebuild of the Temple of the Feminine Divine website: a lightweight custom CMS
+(no WordPress) on AWS.
+
+- **Frontend:** two React + Vite SPAs — `frontend/public-site` (public site)
+  and `frontend/admin` (admin/CMS UI)
+- **Backend:** a single Python Lambda behind API Gateway HTTP API, routed with
+  AWS Lambda Powertools (`backend/src/`)
+- **Data:** DynamoDB (one table per content type, on-demand billing)
+- **Hosting:** private S3 buckets behind CloudFront (OAC), Route 53 + ACM
+- **Infra/IaC:** Terraform (`infra/`), deployed by GitHub Actions on merge to
+  `main`
+
+Full architecture and phase plan:
+[`planning/2026-11-10-architecture-pivot-and-master-plan.md`](planning/2026-11-10-architecture-pivot-and-master-plan.md)
+— that document is the source of truth. Per-phase task briefs live in
+`planning/phases/`.
+
+## Repository layout
+
+```
+infra/bootstrap/   one-time local Terraform run (state bucket, lock table,
+                   GitHub OIDC + deploy role) — see its README
+infra/live/        main infrastructure, deployed by CI
+backend/           Python Lambda source + pytest tests
+frontend/          public-site and admin React apps
+planning/          planning docs and preserved assets (do not treat as code)
+```
+
+## Local development
+
+Frontend apps (each is a standard Vite React app):
+
+```bash
+cd frontend/public-site   # or frontend/admin
+npm install
+npm run dev               # dev server with HMR
+npm run build             # production build -> dist/
+```
+
+Backend tests:
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+pytest
+```
+
+Building the Lambda deployment package (needed before local
+`terraform plan`/`apply` in `infra/live`, since `archive_file` zips it):
+
+```bash
+backend/build.sh
+```
+
+## Deployment
+
+- `infra/bootstrap/` is applied **once, manually, by a human** — it creates the
+  Terraform state bucket, lock table, and the GitHub OIDC deploy role. See
+  `infra/bootstrap/README.md` for the exact steps and the required follow-up
+  (fill `infra/live/backend.hcl`, set the `AWS_DEPLOY_ROLE_ARN` repo variable).
+- Every merge to `main` runs `.github/workflows/deploy.yml`: `terraform apply`
+  in `infra/live/`, then build + S3 sync + CloudFront invalidation for both
+  frontends. PRs touching `infra/live/` or `backend/` get a `terraform plan`
+  check via `.github/workflows/terraform-plan.yml`.
+
+Domain/DNS: the Route 53 zone and ACM certificates are created early but the
+registrar nameservers are **not** changed until go-live (Phase 4). Until then,
+the sites are reachable on their `*.cloudfront.net` domains (see
+`terraform output` in `infra/live`).
