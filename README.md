@@ -67,9 +67,13 @@ backend/build.sh
   frontends. PRs touching `infra/live/` or `backend/` get a `terraform plan`
   check via `.github/workflows/terraform-plan.yml`.
 
-Domain/DNS: the Route 53 hosted zone is created early, but ACM certificates,
-custom-domain aliases, and alias records are gated behind the
-`enable_custom_domains` variable, which stays `false` until the registrar
-nameservers are repointed at go-live (Phase 4) — ACM DNS validation cannot
-complete while the zone isn't authoritative. Until then the sites are reachable
-on their `*.cloudfront.net` domains (see `terraform output` in `infra/live`).
+Domain/DNS: the site currently deploys to the **interim domain**
+`tofd.graycandle.org` / `admin.tofd.graycandle.org`, served from the existing
+`graycandle.org` Route 53 hosted zone via the committed
+`infra/live/terraform.tfvars` (hostnames are decoupled from the zone name, so
+the eventual swap to `templeofthefemininedivine.org` at Phase 4 cutover is a
+tfvars-only change made after the registrar NS repoint). ACM certificates,
+aliases, and alias records are gated behind `enable_custom_domains`, which
+must stay `false` while a zone is not yet publicly authoritative. The default
+`*.cloudfront.net` distribution domains always work (see `terraform output`
+in `infra/live`).

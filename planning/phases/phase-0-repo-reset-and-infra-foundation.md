@@ -143,7 +143,7 @@ Replace `README.md` with a short description of the project, a link to `planning
 2. `infra/bootstrap/` is written and documented, but has only been applied by a human (not by you, unless you were explicitly given credentials and told to).
 3. A PR that changes something trivial in `infra/live/` (e.g., a tag value) triggers `terraform-plan.yml` and shows a clean plan.
 4. Merging a PR to `main` triggers `deploy.yml`, which completes successfully and results in:
-   - `https://<public-distribution-id>.cloudfront.net/api/health` — the public-site CloudFront distribution's **default `*.cloudfront.net` domain** (custom domains are not enabled until Phase 4) — returning `{"status": "ok", "service": "tofd-api"}`.
+   - `https://tofd.graycandle.org/api/health` — the interim public hostname (real ACM cert on the existing graycandle.org zone) — returning `{"status": "ok", "service": "tofd-api"}`. The default `*.cloudfront.net` domains of both distributions should also respond.
    - The public-site CloudFront URL serving the placeholder React page showing that health-check result.
    - The admin CloudFront URL serving the "Admin — coming soon" placeholder page.
 5. No AWS resource related to this project exists that isn't defined in `infra/bootstrap/` or `infra/live/`.
