@@ -110,6 +110,20 @@ resource "aws_cloudfront_origin_access_control" "admin_site" {
   signing_protocol                  = "sigv4"
 }
 
+# SPA fallback: rewrites extensionless URIs to /index.html so client-side
+# routing works. Attached as viewer-request on the DEFAULT (S3) behavior of
+# each distribution only — never on /api/*. We deliberately do NOT use
+# distribution-wide custom_error_response (403/404 -> /index.html) because it
+# applies to every behavior and would mask real API Gateway errors (e.g. a
+# legitimate 404 from GET /api/pages/{slug}) with HTML and a 200.
+resource "aws_cloudfront_function" "spa_rewrite" {
+  name    = "${var.project}-spa-rewrite"
+  runtime = "cloudfront-js-2.0"
+  comment = "Rewrite extensionless URIs to /index.html for SPA routing"
+  publish = true
+  code    = file("${path.module}/spa-rewrite.js")
+}
+
 # --- Public site distribution ----------------------------------------------
 # Default behavior serves the React SPA from S3; /api/* proxies to the API
 # Gateway HTTP API so the frontend can call its own API same-origin.
@@ -148,6 +162,11 @@ resource "aws_cloudfront_distribution" "public_site" {
     cached_methods         = ["GET", "HEAD"]
     compress               = true
     cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.spa_rewrite.arn
+    }
   }
 
   ordered_cache_behavior {
@@ -158,19 +177,6 @@ resource "aws_cloudfront_distribution" "public_site" {
     cached_methods           = ["GET", "HEAD", "OPTIONS"]
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host_header.id
-  }
-
-  # SPA client-side routing: serve index.html for missing paths/objects.
-  custom_error_response {
-    error_code         = 403
-    response_code      = 200
-    response_page_path = "/index.html"
-  }
-
-  custom_error_response {
-    error_code         = 404
-    response_code      = 200
-    response_page_path = "/index.html"
   }
 
   restrictions {
@@ -212,18 +218,11 @@ resource "aws_cloudfront_distribution" "admin_site" {
     cached_methods         = ["GET", "HEAD"]
     compress               = true
     cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
-  }
 
-  custom_error_response {
-    error_code         = 403
-    response_code      = 200
-    response_page_path = "/index.html"
-  }
-
-  custom_error_response {
-    error_code         = 404
-    response_code      = 200
-    response_page_path = "/index.html"
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.spa_rewrite.arn
+    }
   }
 
   restrictions {
