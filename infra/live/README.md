@@ -41,6 +41,31 @@ See `variables.tf`. Notable ones:
   and Route53 alias records are created. Must be `false` while the zone is not
   publicly authoritative (ACM DNS validation would hang); `true` once it is.
 - `price_class` — CloudFront price class (default `PriceClass_100`, cheapest).
+- `admin_emails` — email addresses that get a Cognito admin account (see
+  "Admin users" below).
+
+## Admin users
+
+Each address in `admin_emails` (currently the first admin in
+`terraform.tfvars`) gets a Cognito user with `email` +
+`email_verified=true` attributes and `desired_delivery_mediums = ["EMAIL"]`.
+**No password is set in Terraform** — Cognito generates a temporary password
+and emails it (check spam). It expires after 7 days
+(`temporary_password_validity_days` on the pool); on first sign-in the admin
+app forces a new-password step. To resend an invitation, taint/recreate the
+user (`terraform taint 'module.cognito.aws_cognito_user.admin["<email>"]'`)
+or use the Cognito console's "resend invitation". Adding future admins =
+append their email to `admin_emails` and let CI apply.
+
+## Outputs used by the deploy workflow / admin app
+
+- `api_base_url` — API Gateway invoke URL (no stage prefix; `$default`
+  stage). The admin app calls this directly cross-origin; the public site
+  uses same-origin `/api/*` through CloudFront instead.
+- `cognito_user_pool_id`, `cognito_app_client_id` — public Cognito
+  identifiers bundled into the admin build as `VITE_*` env vars.
+- `pages_table_name` — the `tofd-pages` DynamoDB table (hash key `slug`)
+  that stores CMS page content.
 
 ## Interim domain: tofd.graycandle.org
 

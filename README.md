@@ -37,7 +37,20 @@ cd frontend/public-site   # or frontend/admin
 npm install
 npm run dev               # dev server with HMR
 npm run build             # production build -> dist/
+npm test                  # admin only: vitest component/unit tests
 ```
+
+**Public site** (`frontend/public-site`): `npm run dev` proxies `/api/*`
+to `https://tofd.graycandle.org` so API calls work locally (override with
+`VITE_DEV_API_TARGET`). If the API is unreachable the homepage falls back
+to the default copy — the dev proxy is convenient but not required.
+
+**Admin app** (`frontend/admin`): needs three public Cognito/API identifiers
+or it renders a "not configured" notice. Copy `.env.example` to `.env.local`
+(gitignored) and fill in `VITE_COGNITO_USER_POOL_ID`,
+`VITE_COGNITO_APP_CLIENT_ID`, and `VITE_API_BASE_URL` — get the values from
+`terraform output` in `infra/live` after a deploy. These are public client
+identifiers, not secrets.
 
 Backend tests:
 
