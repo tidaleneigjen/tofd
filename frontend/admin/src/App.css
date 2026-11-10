@@ -1,11 +1,126 @@
 .page {
-  max-width: 40rem;
-  margin: 4rem auto;
-  padding: 0 1.5rem;
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   color: #2b2620;
 }
 
-.page h1 {
-  font-size: 1.75rem;
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.topbar h1 {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #ddd5c7;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.card h1 {
+  font-size: 1.35rem;
+  margin-top: 0;
+}
+
+.field {
+  margin-bottom: 1.1rem;
+}
+
+.field label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  color: #2b2620;
+  background: #fff;
+  border: 1px solid #b8ad99;
+  border-radius: 6px;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible,
+button:focus-visible {
+  outline: 3px solid #8a6d3b;
+  outline-offset: 2px;
+}
+
+.hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: #6b6154;
+}
+
+.muted {
+  color: #6b6154;
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  background: #6b4f2a;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #573f20;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+button.link {
+  background: none;
+  color: #6b4f2a;
+  padding: 0.25rem 0.5rem;
+  text-decoration: underline;
+}
+
+button.link:hover {
+  background: none;
+  color: #573f20;
+}
+
+.alert {
+  padding: 0.7rem 0.9rem;
+  border-radius: 6px;
+  margin: 0 0 1rem;
+}
+
+.alert.error {
+  background: #fdf0ee;
+  border: 1px solid #d99;
+  color: #8c2f21;
+}
+
+.alert.success {
+  background: #eef7ee;
+  border: 1px solid #9c9;
+  color: #265c26;
 }
