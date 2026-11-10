@@ -30,4 +30,11 @@ See `variables.tf`. Notable ones:
 - `domain_name` — apex domain (default `templeofthefemininedivine.org`).
 - `create_hosted_zone` — set `false` + `existing_hosted_zone_id` if a Route 53
   hosted zone for the domain already exists in the account.
+- `enable_custom_domains` — **must stay `false` until Phase 4 cutover.** When
+  `false` (default), the Route 53 zone is created but no ACM certs, aliases,
+  or custom-domain records exist, and the CloudFront distributions serve only
+  on their `*.cloudfront.net` domains. Flip to `true` via a normal PR **after**
+  the registrar NS records are repointed to the hosted zone — that apply
+  creates the certs (DNS validation then succeeds), the www/admin aliases, and
+  the A/AAAA alias records.
 - `price_class` — CloudFront price class (default `PriceClass_100`, cheapest).

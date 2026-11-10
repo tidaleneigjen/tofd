@@ -2,10 +2,58 @@
 # The placeholder DynamoDB table is replaced by real content tables in
 # Phase 1 and can be deleted then.
 
+locals {
+  # CloudFront's fixed Route 53 hosted zone ID — required as the alias target
+  # zone_id for records pointing at a distribution.
+  cloudfront_zone_id = "Z2FDTNDATAQYW2"
+}
+
 check "hosted_zone_config" {
   assert {
     condition     = var.create_hosted_zone || var.existing_hosted_zone_id != ""
     error_message = "existing_hosted_zone_id must be set when create_hosted_zone = false."
+  }
+}
+
+# Alias records pointing the custom domains at the CloudFront distributions.
+# Only created when enable_custom_domains = true (post-NS-cutover, Phase 4);
+# until then the sites are reachable on their *.cloudfront.net domains.
+locals {
+  distribution_aliases = var.enable_custom_domains ? {
+    www_a = {
+      record_name         = "www.${var.domain_name}"
+      type                = "A"
+      distribution_domain = module.site.public_distribution_domain_name
+    }
+    www_aaaa = {
+      record_name         = "www.${var.domain_name}"
+      type                = "AAAA"
+      distribution_domain = module.site.public_distribution_domain_name
+    }
+    admin_a = {
+      record_name         = "admin.${var.domain_name}"
+      type                = "A"
+      distribution_domain = module.site.admin_distribution_domain_name
+    }
+    admin_aaaa = {
+      record_name         = "admin.${var.domain_name}"
+      type                = "AAAA"
+      distribution_domain = module.site.admin_distribution_domain_name
+    }
+  } : {}
+}
+
+resource "aws_route53_record" "distribution_alias" {
+  for_each = local.distribution_aliases
+
+  zone_id = module.dns.hosted_zone_id
+  name    = each.value.record_name
+  type    = each.value.type
+
+  alias {
+    name                   = each.value.distribution_domain
+    zone_id                = local.cloudfront_zone_id
+    evaluate_target_health = false
   }
 }
 
@@ -38,21 +86,23 @@ module "dns" {
     aws = aws.us_east_1
   }
 
-  project            = var.project
-  zone_name          = var.domain_name
-  create_hosted_zone = var.create_hosted_zone
-  existing_zone_id   = var.existing_hosted_zone_id
+  project               = var.project
+  zone_name             = var.domain_name
+  create_hosted_zone    = var.create_hosted_zone
+  existing_zone_id      = var.existing_hosted_zone_id
+  enable_custom_domains = var.enable_custom_domains
 }
 
 module "site" {
   source = "./modules/cloudfront-site"
 
-  project         = var.project
-  domain_name     = var.domain_name
-  api_domain_name = module.api.api_domain_name
-  public_cert_arn = module.dns.www_cert_arn
-  admin_cert_arn  = module.dns.admin_cert_arn
-  price_class     = var.price_class
+  project               = var.project
+  domain_name           = var.domain_name
+  api_domain_name       = module.api.api_domain_name
+  public_cert_arn       = module.dns.www_cert_arn
+  admin_cert_arn        = module.dns.admin_cert_arn
+  enable_custom_domains = var.enable_custom_domains
+  price_class           = var.price_class
 }
 
 module "cognito" {

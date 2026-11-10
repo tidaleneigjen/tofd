@@ -19,3 +19,9 @@ variable "existing_zone_id" {
   type        = string
   default     = ""
 }
+
+variable "enable_custom_domains" {
+  description = "Create ACM certificates + DNS validation records. MUST stay false until registrar NS records point at this hosted zone (Phase 4 cutover) — ACM DNS validation only completes once the zone is authoritative."
+  type        = bool
+  default     = false
+}

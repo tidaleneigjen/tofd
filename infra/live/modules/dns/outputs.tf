@@ -9,11 +9,11 @@ output "hosted_zone_name_servers" {
 }
 
 output "www_cert_arn" {
-  description = "ARN of the validated ACM certificate for www.<domain>."
-  value       = aws_acm_certificate_validation.www.certificate_arn
+  description = "ARN of the validated ACM certificate for www.<domain>. Null until enable_custom_domains = true."
+  value       = var.enable_custom_domains ? aws_acm_certificate_validation.www[0].certificate_arn : null
 }
 
 output "admin_cert_arn" {
-  description = "ARN of the validated ACM certificate for admin.<domain>."
-  value       = aws_acm_certificate_validation.admin.certificate_arn
+  description = "ARN of the validated ACM certificate for admin.<domain>. Null until enable_custom_domains = true."
+  value       = var.enable_custom_domains ? aws_acm_certificate_validation.admin[0].certificate_arn : null
 }

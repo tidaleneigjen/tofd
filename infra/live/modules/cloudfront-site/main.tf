@@ -1,5 +1,12 @@
 data "aws_caller_identity" "current" {}
 
+check "custom_domains_require_certs" {
+  assert {
+    condition     = !var.enable_custom_domains || (var.public_cert_arn != null && var.admin_cert_arn != null)
+    error_message = "public_cert_arn and admin_cert_arn must be provided when enable_custom_domains = true."
+  }
+}
+
 locals {
   public_alias = "www.${var.domain_name}"
   admin_alias  = "admin.${var.domain_name}"
@@ -114,7 +121,7 @@ resource "aws_cloudfront_distribution" "public_site" {
   default_root_object = "index.html"
   price_class         = var.price_class
   http_version        = "http2and3"
-  aliases             = [local.public_alias]
+  aliases             = var.enable_custom_domains ? [local.public_alias] : []
 
   origin {
     domain_name              = aws_s3_bucket.public_site.bucket_regional_domain_name
@@ -173,9 +180,10 @@ resource "aws_cloudfront_distribution" "public_site" {
   }
 
   viewer_certificate {
-    acm_certificate_arn      = var.public_cert_arn
-    ssl_support_method       = "sni-only"
-    minimum_protocol_version = "TLSv1.2_2021"
+    cloudfront_default_certificate = var.enable_custom_domains ? false : true
+    acm_certificate_arn            = var.enable_custom_domains ? var.public_cert_arn : null
+    ssl_support_method             = var.enable_custom_domains ? "sni-only" : null
+    minimum_protocol_version       = var.enable_custom_domains ? "TLSv1.2_2021" : null
   }
 }
 
@@ -189,7 +197,7 @@ resource "aws_cloudfront_distribution" "admin_site" {
   default_root_object = "index.html"
   price_class         = var.price_class
   http_version        = "http2and3"
-  aliases             = [local.admin_alias]
+  aliases             = var.enable_custom_domains ? [local.admin_alias] : []
 
   origin {
     domain_name              = aws_s3_bucket.admin_site.bucket_regional_domain_name
@@ -225,9 +233,10 @@ resource "aws_cloudfront_distribution" "admin_site" {
   }
 
   viewer_certificate {
-    acm_certificate_arn      = var.admin_cert_arn
-    ssl_support_method       = "sni-only"
-    minimum_protocol_version = "TLSv1.2_2021"
+    cloudfront_default_certificate = var.enable_custom_domains ? false : true
+    acm_certificate_arn            = var.enable_custom_domains ? var.admin_cert_arn : null
+    ssl_support_method             = var.enable_custom_domains ? "sni-only" : null
+    minimum_protocol_version       = var.enable_custom_domains ? "TLSv1.2_2021" : null
   }
 }
 

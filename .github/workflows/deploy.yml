@@ -5,6 +5,11 @@ on:
     branches:
       - main
 
+# Serialize deploys; never cancel an in-progress apply mid-flight.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
 permissions:
   id-token: write # required for OIDC role assumption
   contents: read

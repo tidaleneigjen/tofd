@@ -16,6 +16,12 @@ variable "domain_name" {
   default     = "templeofthefemininedivine.org"
 }
 
+variable "enable_custom_domains" {
+  description = "Serve the CloudFront distributions on www./admin.<domain_name> with ACM certs and create the Route53 alias records. MUST stay false until the registrar NS records for domain_name are repointed to the Route53 hosted zone (Phase 4 cutover) — ACM DNS validation cannot complete while the zone is not authoritative. When false, the sites are reachable only on their default *.cloudfront.net domains."
+  type        = bool
+  default     = false
+}
+
 variable "create_hosted_zone" {
   description = "Create a new Route 53 hosted zone for domain_name. Set to false if a hosted zone already exists in this account (then set existing_hosted_zone_id)."
   type        = bool
