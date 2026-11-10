@@ -1,0 +1,290 @@
+data "aws_caller_identity" "current" {}
+
+locals {
+  public_alias = "www.${var.domain_name}"
+  admin_alias  = "admin.${var.domain_name}"
+}
+
+# Managed cache/origin-request policies, looked up by name so we don't
+# hardcode their IDs.
+data "aws_cloudfront_cache_policy" "caching_optimized" {
+  name = "Managed-CachingOptimized"
+}
+
+data "aws_cloudfront_cache_policy" "caching_disabled" {
+  name = "Managed-CachingDisabled"
+}
+
+# AllViewerExceptHostHeader is used instead of AllViewer for the /api/*
+# behavior: API Gateway HTTP API origins reject requests whose Host header
+# doesn't match the execute-api domain, and AllViewer would forward the
+# viewer's Host (www.templeofthefemininedivine.org).
+data "aws_cloudfront_origin_request_policy" "all_viewer_except_host_header" {
+  name = "Managed-AllViewerExceptHostHeader"
+}
+
+# --- Private S3 buckets (CloudFront OAC only, no public access) ------------
+
+resource "aws_s3_bucket" "public_site" {
+  bucket = "${var.project}-public-site-${data.aws_caller_identity.current.account_id}"
+}
+
+resource "aws_s3_bucket" "admin_site" {
+  bucket = "${var.project}-admin-app-${data.aws_caller_identity.current.account_id}"
+}
+
+resource "aws_s3_bucket_public_access_block" "public_site" {
+  bucket = aws_s3_bucket.public_site.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_public_access_block" "admin_site" {
+  bucket = aws_s3_bucket.admin_site.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_ownership_controls" "public_site" {
+  bucket = aws_s3_bucket.public_site.id
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
+resource "aws_s3_bucket_ownership_controls" "admin_site" {
+  bucket = aws_s3_bucket.admin_site.id
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "public_site" {
+  bucket = aws_s3_bucket.public_site.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "admin_site" {
+  bucket = aws_s3_bucket.admin_site.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# --- Origin Access Control -------------------------------------------------
+
+resource "aws_cloudfront_origin_access_control" "public_site" {
+  name                              = "${var.project}-public-site-oac"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+resource "aws_cloudfront_origin_access_control" "admin_site" {
+  name                              = "${var.project}-admin-site-oac"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+# --- Public site distribution ----------------------------------------------
+# Default behavior serves the React SPA from S3; /api/* proxies to the API
+# Gateway HTTP API so the frontend can call its own API same-origin.
+
+resource "aws_cloudfront_distribution" "public_site" {
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "${var.project} public site"
+  default_root_object = "index.html"
+  price_class         = var.price_class
+  http_version        = "http2and3"
+  aliases             = [local.public_alias]
+
+  origin {
+    domain_name              = aws_s3_bucket.public_site.bucket_regional_domain_name
+    origin_id                = "public-site-s3"
+    origin_access_control_id = aws_cloudfront_origin_access_control.public_site.id
+  }
+
+  origin {
+    domain_name = var.api_domain_name
+    origin_id   = "api-gateway"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  default_cache_behavior {
+    target_origin_id       = "public-site-s3"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
+  }
+
+  ordered_cache_behavior {
+    path_pattern             = "/api/*"
+    target_origin_id         = "api-gateway"
+    viewer_protocol_policy   = "redirect-to-https"
+    allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods           = ["GET", "HEAD", "OPTIONS"]
+    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host_header.id
+  }
+
+  # SPA client-side routing: serve index.html for missing paths/objects.
+  custom_error_response {
+    error_code         = 403
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
+  custom_error_response {
+    error_code         = 404
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    acm_certificate_arn      = var.public_cert_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
+}
+
+# --- Admin app distribution ------------------------------------------------
+# Serves only the admin SPA from S3. The admin app calls the API cross-origin.
+
+resource "aws_cloudfront_distribution" "admin_site" {
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "${var.project} admin app"
+  default_root_object = "index.html"
+  price_class         = var.price_class
+  http_version        = "http2and3"
+  aliases             = [local.admin_alias]
+
+  origin {
+    domain_name              = aws_s3_bucket.admin_site.bucket_regional_domain_name
+    origin_id                = "admin-site-s3"
+    origin_access_control_id = aws_cloudfront_origin_access_control.admin_site.id
+  }
+
+  default_cache_behavior {
+    target_origin_id       = "admin-site-s3"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
+  }
+
+  custom_error_response {
+    error_code         = 403
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
+  custom_error_response {
+    error_code         = 404
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    acm_certificate_arn      = var.admin_cert_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
+}
+
+# --- Bucket policies: allow only the matching CloudFront distribution -------
+
+data "aws_iam_policy_document" "public_site_bucket" {
+  statement {
+    sid    = "AllowCloudFrontServicePrincipalReadOnly"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.public_site.arn}/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [aws_cloudfront_distribution.public_site.arn]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "public_site" {
+  bucket = aws_s3_bucket.public_site.id
+  policy = data.aws_iam_policy_document.public_site_bucket.json
+
+  depends_on = [aws_s3_bucket_public_access_block.public_site]
+}
+
+data "aws_iam_policy_document" "admin_site_bucket" {
+  statement {
+    sid    = "AllowCloudFrontServicePrincipalReadOnly"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.admin_site.arn}/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [aws_cloudfront_distribution.admin_site.arn]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "admin_site" {
+  bucket = aws_s3_bucket.admin_site.id
+  policy = data.aws_iam_policy_document.admin_site_bucket.json
+
+  depends_on = [aws_s3_bucket_public_access_block.admin_site]
+}
