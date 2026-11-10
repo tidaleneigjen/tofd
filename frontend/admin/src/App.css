@@ -1,0 +1,11 @@
+.page {
+  max-width: 40rem;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #2b2620;
+}
+
+.page h1 {
+  font-size: 1.75rem;
+}
