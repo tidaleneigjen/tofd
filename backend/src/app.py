@@ -1,8 +1,9 @@
 """TOFD API Lambda entrypoint.
 
 Single function hosting all API routes via AWS Lambda Powertools'
-APIGatewayHttpResolver. Phase 1 adds the pages content API; later phases
-add more content-type routes to the same function.
+APIGatewayHttpResolver. Phase 1.1 gives the homepage its own structured
+schema (carousel slides + sidebar); Phase 2 adds schemas for the generic
+informational pages.
 """
 
 import json
@@ -18,21 +19,8 @@ app = APIGatewayHttpResolver()
 
 PAGES_TABLE_NAME = os.environ.get("PAGES_TABLE_NAME", "")
 
-# Phase 1 only allows editing the homepage. Phase 2 widens this set.
-ALLOWED_SLUGS = {"home"}
-
-# Client-settable fields for PUT /api/pages/{slug}. bodyFormat, updatedAt and
-# updatedBy are server-managed and rejected as unknown fields if supplied.
-ALLOWED_PAGE_FIELDS = {"title", "heroHeading", "missionStatement", "body", "heroImageUrl"}
-
-FIELD_LIMITS = {
-    "title": 200,
-    "heroHeading": 200,
-    "missionStatement": 2000,
-    "body": 20000,
-}
-
-REQUIRED_PAGE_FIELDS = {"heroHeading", "missionStatement", "body"}
+MAX_SLIDES = 8
+IMAGE_URL_PREFIXES = ("/images/", "https://")
 
 _dynamodb = None
 
@@ -70,41 +58,119 @@ def _jwt_claims() -> dict | None:
     return claims or None
 
 
-def _validate_page_payload(payload) -> tuple[dict | None, list[str]]:
-    """Validate a PUT body. Returns (clean_item_fields, errors)."""
+def _string_field(container: dict, key: str, path: str, errors: list, *, required: bool, max_length: int):
+    """Validate container[key] as a string within max_length.
+
+    Returns the cleaned value, or None when absent/invalid (an error is
+    appended for invalid values, and for missing required fields).
+    """
+    if key not in container:
+        if required:
+            errors.append(f"Missing required field: {path}.{key}")
+        return None
+    value = container[key]
+    if not isinstance(value, str):
+        errors.append(f"Field {path}.{key} must be a string.")
+        return None
+    if len(value) > max_length:
+        errors.append(f"Field {path}.{key} is too long (max {max_length} characters).")
+        return None
+    return value
+
+
+def _validate_slide(slide, index: int, errors: list) -> dict:
+    path = f"slides[{index}]"
+    if not isinstance(slide, dict):
+        errors.append(f"Field {path} must be an object.")
+        return {}
+
+    for key in sorted(set(slide) - {"imageUrl", "title", "text"}):
+        errors.append(f"Unknown field: {path}.{key}")
+
+    clean: dict = {}
+
+    if "imageUrl" not in slide:
+        errors.append(f"Missing required field: {path}.imageUrl")
+    else:
+        image_url = slide["imageUrl"]
+        if not isinstance(image_url, str):
+            errors.append(f"Field {path}.imageUrl must be a string.")
+        elif len(image_url) > 500:
+            errors.append(f"Field {path}.imageUrl is too long (max 500 characters).")
+        elif not image_url.startswith(IMAGE_URL_PREFIXES):
+            errors.append(f"Field {path}.imageUrl must start with '/images/' or 'https://'.")
+        else:
+            clean["imageUrl"] = image_url
+
+    for field, limit in (("title", 100), ("text", 1000)):
+        value = _string_field(slide, field, path, errors, required=False, max_length=limit)
+        if value is not None:
+            clean[field] = value
+
+    return clean
+
+
+def _validate_slides(value, errors: list):
+    if not isinstance(value, list):
+        errors.append("Field slides must be a list.")
+        return None
+    if not 1 <= len(value) <= MAX_SLIDES:
+        errors.append(f"Field slides must contain between 1 and {MAX_SLIDES} items.")
+        return None
+    return [_validate_slide(slide, i, errors) for i, slide in enumerate(value)]
+
+
+def _validate_sidebar(value, errors: list):
+    if not isinstance(value, dict):
+        errors.append("Field sidebar must be an object.")
+        return None
+
+    for key in sorted(set(value) - {"title", "text"}):
+        errors.append(f"Unknown field: sidebar.{key}")
+
+    clean: dict = {}
+    title = _string_field(value, "title", "sidebar", errors, required=True, max_length=100)
+    if title is not None:
+        clean["title"] = title
+    text = _string_field(value, "text", "sidebar", errors, required=True, max_length=3000)
+    if text is not None:
+        clean["text"] = text
+    return clean
+
+
+def _validate_home(payload) -> tuple[dict | None, list[str]]:
+    """Validate a PUT body for slug 'home'. Returns (fields, errors)."""
     errors: list[str] = []
     if not isinstance(payload, dict):
         return None, ["Request body must be a JSON object."]
 
-    unknown = sorted(set(payload) - ALLOWED_PAGE_FIELDS)
-    for field in unknown:
+    # updatedAt/updatedBy/slug and any Phase-1 fields are rejected here as
+    # unknown — they are server-managed or no longer part of the schema.
+    for field in sorted(set(payload) - {"slides", "sidebar"}):
         errors.append(f"Unknown field: {field}")
 
-    for field in REQUIRED_PAGE_FIELDS:
-        if field not in payload:
-            errors.append(f"Missing required field: {field}")
+    slides = None
+    if "slides" not in payload:
+        errors.append("Missing required field: slides")
+    else:
+        slides = _validate_slides(payload["slides"], errors)
 
-    clean: dict = {}
-    for field, limit in FIELD_LIMITS.items():
-        if field not in payload:
-            continue
-        value = payload[field]
-        if not isinstance(value, str):
-            errors.append(f"Field {field} must be a string.")
-            continue
-        if len(value) > limit:
-            errors.append(f"Field {field} is too long (max {limit} characters).")
-            continue
-        clean[field] = value
+    sidebar = None
+    if "sidebar" not in payload:
+        errors.append("Missing required field: sidebar")
+    else:
+        sidebar = _validate_sidebar(payload["sidebar"], errors)
 
-    if "heroImageUrl" in payload:
-        value = payload["heroImageUrl"]
-        if value is not None and not isinstance(value, str):
-            errors.append("Field heroImageUrl must be a string.")
-        else:
-            clean["heroImageUrl"] = value
+    if errors:
+        return None, errors
+    return {"slides": slides, "sidebar": sidebar}, []
 
-    return (clean if not errors else None), errors
+
+# Per-slug request schemas. The dict key is also the slug allow-list: a slug
+# is editable iff it has an entry here. Phase 2 adds schemas for the
+# generic informational pages.
+PAGE_SCHEMAS = {"home": _validate_home}
+ALLOWED_SLUGS = frozenset(PAGE_SCHEMAS)
 
 
 @app.get("/api/health")
@@ -114,6 +180,9 @@ def health() -> dict:
 
 @app.get("/api/pages/<slug>")
 def get_page(slug: str):
+    # GET is deliberately tolerant: whatever is stored is returned as-is, so
+    # legacy Phase 1 items (no slides/sidebar) still read fine and clients
+    # fall back to defaults per missing part.
     if slug not in ALLOWED_SLUGS:
         return _error(404, f"Page not found: {slug}")
 
@@ -130,7 +199,8 @@ def put_page(slug: str):
     if claims is None:
         return _error(401, "Authentication required.")
 
-    if slug not in ALLOWED_SLUGS:
+    validator = PAGE_SCHEMAS.get(slug)
+    if validator is None:
         return _error(404, f"Page not found: {slug}")
 
     try:
@@ -138,16 +208,17 @@ def put_page(slug: str):
     except (json.JSONDecodeError, TypeError):
         return _error(400, "Invalid JSON body.", ["Request body must be valid JSON."])
 
-    fields, errors = _validate_page_payload(payload)
+    fields, errors = validator(payload)
     if errors:
         return _error(400, "Invalid page data.", errors)
 
     updated_by = claims.get("email") or claims.get("sub") or "unknown"
     item = {
         "slug": slug,
-        "bodyFormat": "text",
         "updatedAt": datetime.now(timezone.utc).isoformat(),
         "updatedBy": updated_by,
+        # PUT replaces the whole item — the validated fields are the entire
+        # editable document.
         **fields,
     }
     _table(PAGES_TABLE_NAME).put_item(Item=item)
