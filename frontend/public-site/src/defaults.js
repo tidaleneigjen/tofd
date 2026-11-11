@@ -38,3 +38,24 @@ export const DEFAULT_PAGE = {
     text: "Under the guardianship of ordained clergy, the Temple of the Feminine Divine is a spiritual community that supports one another on our paths of Earth Based Spirituality. We honor Mother Nature and encourage balance and harmony among all beings. We welcome all genders, sexual orientations, and faiths.\n\nWe are committed to reclaiming, experiencing, and celebrating the feminine aspect of the Divine.",
   },
 };
+
+// Default bodies for informational pages, rendered only when the page has
+// never been saved (GET 404). A saved page — even with an empty body — wins
+// over these defaults. Pages without an entry here show "Content coming
+// soon." From the live Wix site, 2026-11-10; confirm with the Temple.
+// about / vision-mission / history / honoring-kay intentionally have NO
+// defaults: their Wix pages were empty or "COMING SOON" placeholders.
+export const PAGE_DEFAULTS = {
+  "iseum-musicum": {
+    title: "Iseum Musicum",
+    body: '<p>The Iseum Musicum, the School of the Muse, is the education wing of the Temple of the Feminine Divine. It offers a three-year course that prepares individuals to become Pagan clergy. The course is intended to support students as they explore and develop their individual spiritual paths, and learn how to serve their communities as clergy.</p><p><a href="https://www.templeofthefemininedivine.org/_files/ugd/e09ea1_e663d4a02f914d5caa90307007a7d017.pdf">More information (PDF)</a> · <a href="https://www.templeofthefemininedivine.org/_files/ugd/e09ea1_84139cbe175d4205be22f1ee2a52c14b.pdf">Application (PDF)</a></p>',
+  },
+  donate: {
+    title: "Donate",
+    body: '<p><strong>Donations made simple.</strong> Donating through PayPal is easy. You select the amount and you can choose a one time or recurring donation.</p><p><a href="https://www.paypal.com/donate?hosted_button_id=5FUNE4XCFTBAS">Donate with PayPal</a></p><p><strong>Become a member.</strong> Purchase an annual membership to help sustain the Temple of the Feminine Divine. Individual membership $40, family membership $75. Online membership sign-up is coming soon.</p>',
+  },
+  contact: {
+    title: "Contact",
+    body: '<p>Temple of the Feminine Divine<br>PO Box 218<br>Brooks, ME 04921</p><p><a href="mailto:webgoddess@templeofthefemininedivine.org">webgoddess@templeofthefemininedivine.org</a></p>',
+  },
+};
