@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchAuthSession, signOut } from "aws-amplify/auth";
+import { fetchAuthSession } from "aws-amplify/auth";
 import { API_BASE_URL } from "./amplify";
 import { DEFAULT_PAGE, SLIDE_IMAGES } from "./defaults";
 import { friendlyApiError } from "./authErrors";
@@ -22,7 +22,7 @@ function mergeWithDefaults(data) {
   return { slides, sidebar };
 }
 
-export default function Editor({ onSignedOut }) {
+export default function Editor() {
   const [form, setForm] = useState(null); // { slides: [...], sidebar: {...} }
   const [loadState, setLoadState] = useState("loading"); // loading | ready | error
   const [loadError, setLoadError] = useState("");
@@ -114,25 +114,12 @@ export default function Editor({ onSignedOut }) {
     }
   }
 
-  async function handleSignOut() {
-    try {
-      await signOut();
-    } finally {
-      onSignedOut();
-    }
-  }
-
   const slideCount = form?.slides.length ?? 0;
   const knownImages = new Set(SLIDE_IMAGES.map((img) => img.value));
 
   return (
-    <div className="page">
-      <header className="topbar">
-        <h1>Edit Homepage</h1>
-        <button type="button" className="link" onClick={handleSignOut}>
-          Sign out
-        </button>
-      </header>
+    <section>
+      <h1 className="page-heading">Edit Homepage</h1>
 
       {loadState === "loading" && <p className="muted">Loading…</p>}
 
@@ -292,6 +279,6 @@ export default function Editor({ onSignedOut }) {
           </button>
         </form>
       )}
-    </div>
+    </section>
   );
 }

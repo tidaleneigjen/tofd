@@ -14,9 +14,214 @@
   margin-bottom: 1.5rem;
 }
 
-.topbar h1 {
-  font-size: 1.5rem;
+.topbar-brand {
   margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #6b6154;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.topbar-link {
+  font-weight: 600;
+  color: #6b4f2a;
+  text-decoration: none;
+}
+
+.topbar-link:hover {
+  text-decoration: underline;
+}
+
+.topbar-link:focus-visible {
+  outline: 3px solid #8a6d3b;
+  outline-offset: 2px;
+}
+
+.page-heading {
+  font-size: 1.5rem;
+  margin: 0 0 0.75rem;
+}
+
+/* --- Pages list ---------------------------------------------------------- */
+
+.pages-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pages-table th,
+.pages-table td {
+  text-align: left;
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid #e2d9c8;
+  vertical-align: middle;
+}
+
+.pages-table th {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b6154;
+}
+
+.pages-table tr:last-child td {
+  border-bottom: none;
+}
+
+.page-link {
+  font-weight: 600;
+  color: #6b4f2a;
+}
+
+.page-link:hover {
+  text-decoration: underline;
+}
+
+.edit-link {
+  font-weight: 600;
+  color: #6b4f2a;
+  white-space: nowrap;
+}
+
+.edit-link:hover {
+  text-decoration: underline;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* --- Rich text editor ----------------------------------------------------- */
+
+.field-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.rich-editor {
+  border: 1px solid #b8ad99;
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.45rem 0.5rem;
+  background: #efe9dc;
+  border-bottom: 1px solid #ddd5c7;
+}
+
+.toolbar-btn {
+  min-width: 2.1rem;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.85rem;
+  background: #fff;
+  color: #4a3d28;
+  border: 1px solid #c9bda6;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: #f4eddf;
+}
+
+.toolbar-btn[aria-pressed="true"] {
+  background: #6b4f2a;
+  border-color: #6b4f2a;
+  color: #fff;
+}
+
+.tiptap-body {
+  min-height: 16rem;
+  padding: 0.8rem 1rem;
+  font: inherit;
+  color: #2b2620;
+  outline: none;
+}
+
+.tiptap-body:focus-visible {
+  outline: 3px solid #8a6d3b;
+  outline-offset: -3px;
+}
+
+.tiptap-body p {
+  margin: 0 0 0.6rem;
+}
+
+.tiptap-body h2 {
+  font-size: 1.35rem;
+  margin: 1rem 0 0.4rem;
+}
+
+.tiptap-body h3 {
+  font-size: 1.15rem;
+  margin: 0.9rem 0 0.35rem;
+}
+
+.tiptap-body ul,
+.tiptap-body ol {
+  margin: 0 0 0.6rem;
+  padding-left: 1.5rem;
+}
+
+.tiptap-body blockquote {
+  margin: 0 0 0.6rem;
+  padding-left: 0.9rem;
+  border-left: 3px solid #c9bda6;
+  color: #555;
+}
+
+.tiptap-body a {
+  color: #6b4f2a;
+}
+
+.link-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: #fbf8f1;
+  border-bottom: 1px solid #ddd5c7;
+}
+
+.link-form label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.link-form input {
+  flex: 1;
+  min-width: 12rem;
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #b8ad99;
+  border-radius: 6px;
+}
+
+.link-form-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.link-error {
+  flex-basis: 100%;
+  color: #8c2f21;
 }
 
 .card {

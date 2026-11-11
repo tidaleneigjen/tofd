@@ -43,7 +43,7 @@ describe("Editor", () => {
 
   it("loads the home page into the slides and sidebar form", async () => {
     mockApi(HOME_ITEM);
-    render(<Editor onSignedOut={vi.fn()} />);
+    render(<Editor />);
 
     expect(await screen.findByText("Slide 1")).toBeTruthy();
     expect(screen.getByLabelText("Title (optional)")).toHaveProperty("value", "News");
@@ -63,7 +63,7 @@ describe("Editor", () => {
       "fetch",
       vi.fn().mockResolvedValue({ ok: false, status: 404, json: () => Promise.resolve({}) }),
     );
-    render(<Editor onSignedOut={vi.fn()} />);
+    render(<Editor />);
 
     await waitFor(() => expect(screen.getAllByText(/Slide \d/).length).toBeGreaterThan(0));
     // defaults have 6 slides
@@ -74,7 +74,7 @@ describe("Editor", () => {
 
   it("adds and removes slides within limits", async () => {
     mockApi(HOME_ITEM);
-    render(<Editor onSignedOut={vi.fn()} />);
+    render(<Editor />);
     await screen.findByText("Slide 1");
 
     fireEvent.click(screen.getByRole("button", { name: "Add slide" }));
@@ -94,7 +94,7 @@ describe("Editor", () => {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(HOME_ITEM) });
     });
     vi.stubGlobal("fetch", fetchMock);
-    render(<Editor onSignedOut={vi.fn()} />);
+    render(<Editor />);
     await screen.findByText("Slide 1");
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));

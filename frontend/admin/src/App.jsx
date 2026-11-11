@@ -1,9 +1,28 @@
 import { useEffect, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { isConfigured } from "./amplify";
 import LoginForm from "./LoginForm";
 import NewPasswordForm from "./NewPasswordForm";
 import Editor from "./Editor";
+import PagesList from "./PagesList";
+import RoutedPageEditor from "./PageEditor";
+import Shell from "./Shell";
+
+function AdminApp({ onSignedOut }) {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Shell onSignedOut={onSignedOut} />}>
+          <Route index element={<PagesList />} />
+          <Route path="pages/home" element={<Editor />} />
+          <Route path="pages/:slug" element={<RoutedPageEditor />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}
 
 export default function App() {
   const [view, setView] = useState("checking"); // checking | login | newPassword | editor
@@ -74,5 +93,5 @@ export default function App() {
     );
   }
 
-  return <Editor onSignedOut={() => setView("login")} />;
+  return <AdminApp onSignedOut={() => setView("login")} />;
 }
