@@ -11,7 +11,16 @@ PKG="$ROOT/.build/package"
 rm -rf "$ROOT/.build"
 mkdir -p "$PKG"
 
-python3 -m pip install --quiet --upgrade --target "$PKG" -r "$ROOT/requirements.txt"
+# nh3 ships a compiled extension, so deps must be resolved for the Lambda
+# runtime's platform (python3.12, x86_64 — the module doesn't set
+# `architectures`, so AWS defaults to x86_64), not the build host's.
+python3 -m pip install --quiet --upgrade \
+  --platform manylinux2014_x86_64 \
+  --implementation cp \
+  --python-version 3.12 \
+  --only-binary=:all: \
+  --target "$PKG" \
+  -r "$ROOT/requirements.txt"
 cp "$ROOT"/src/*.py "$PKG"/
 
 echo "Built Lambda package at $PKG"

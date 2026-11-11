@@ -11,6 +11,7 @@ import os
 from datetime import datetime, timezone
 
 import boto3
+import nh3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.event_handler import APIGatewayHttpResolver, Response
 
@@ -21,6 +22,31 @@ PAGES_TABLE_NAME = os.environ.get("PAGES_TABLE_NAME", "")
 
 MAX_SLIDES = 8
 IMAGE_URL_PREFIXES = ("/images/", "https://")
+
+MAX_PAGE_TITLE = 200
+MAX_PAGE_BODY = 50000
+
+# Allowlist for informational-page HTML bodies, sanitized with nh3 on PUT.
+# Must stay in parity with the DOMPurify config in the public site's
+# RichText component.
+RICH_TEXT_TAGS = {
+    "p", "br", "h2", "h3", "h4", "strong", "em", "u",
+    "ul", "ol", "li", "blockquote", "a", "hr",
+}
+RICH_TEXT_ATTRIBUTES = {"a": {"href"}}
+RICH_TEXT_URL_SCHEMES = {"https", "http", "mailto"}
+
+# Informational pages share one generic title+body schema. `home` keeps its
+# own slides+sidebar schema above.
+GENERIC_SLUGS = (
+    "about",
+    "vision-mission",
+    "history",
+    "honoring-kay",
+    "iseum-musicum",
+    "donate",
+    "contact",
+)
 
 _dynamodb = None
 
@@ -166,16 +192,102 @@ def _validate_home(payload) -> tuple[dict | None, list[str]]:
     return {"slides": slides, "sidebar": sidebar}, []
 
 
+def _sanitize_html(body: str) -> str:
+    return nh3.clean(
+        body,
+        tags=RICH_TEXT_TAGS,
+        attributes=RICH_TEXT_ATTRIBUTES,
+        url_schemes=RICH_TEXT_URL_SCHEMES,
+        link_rel="noopener noreferrer",
+    )
+
+
+def _validate_page(payload) -> tuple[dict | None, list[str]]:
+    """Validate a PUT body for a generic informational page.
+
+    Schema: {"title": str <=200 (required), "body": str <=50000 (required,
+    may be empty)}. body is HTML sanitized with nh3 before storage; the
+    server stamps bodyFormat="html". updatedAt/updatedBy/slug and any other
+    client-supplied field are rejected as unknown.
+    """
+    errors: list[str] = []
+    if not isinstance(payload, dict):
+        return None, ["Request body must be a JSON object."]
+
+    for field in sorted(set(payload) - {"title", "body"}):
+        errors.append(f"Unknown field: {field}")
+
+    title = None
+    if "title" not in payload:
+        errors.append("Missing required field: title")
+    elif not isinstance(payload["title"], str):
+        errors.append("Field title must be a string.")
+    elif len(payload["title"]) > MAX_PAGE_TITLE:
+        errors.append(f"Field title is too long (max {MAX_PAGE_TITLE} characters).")
+    else:
+        title = payload["title"]
+
+    body = None
+    if "body" not in payload:
+        errors.append("Missing required field: body")
+    else:
+        raw_body = payload["body"]
+        if not isinstance(raw_body, str):
+            errors.append("Field body must be a string.")
+        elif len(raw_body) > MAX_PAGE_BODY:
+            errors.append(f"Field body is too long (max {MAX_PAGE_BODY} characters).")
+        else:
+            body = _sanitize_html(raw_body)
+
+    if errors:
+        return None, errors
+    return {"title": title, "body": body, "bodyFormat": "html"}, []
+
+
 # Per-slug request schemas. The dict key is also the slug allow-list: a slug
-# is editable iff it has an entry here. Phase 2 adds schemas for the
-# generic informational pages.
+# is editable iff it has an entry here.
 PAGE_SCHEMAS = {"home": _validate_home}
+PAGE_SCHEMAS.update({slug: _validate_page for slug in GENERIC_SLUGS})
 ALLOWED_SLUGS = frozenset(PAGE_SCHEMAS)
 
 
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok", "service": "tofd-api"}
+
+
+@app.get("/api/pages")
+def list_pages():
+    # The table holds a handful of items — a scan is fine, no pagination
+    # needed for a single-digit count.
+    items = []
+    kwargs = {}
+    while True:
+        page = _table(PAGES_TABLE_NAME).scan(**kwargs)
+        items.extend(page.get("Items", []))
+        last_key = page.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        kwargs["ExclusiveStartKey"] = last_key
+
+    summary = []
+    for item in items:
+        slug = item.get("slug", "")
+        summary.append(
+            {
+                "slug": slug,
+                # `home` has no title field (slides+sidebar schema) — give it
+                # a stable display title; other pages use their stored title.
+                "title": item.get("title") or ("Home" if slug == "home" else slug),
+                "updatedAt": item.get("updatedAt"),
+            }
+        )
+    summary.sort(key=lambda entry: entry["slug"])
+    return Response(
+        status_code=200,
+        content_type="application/json",
+        body=json.dumps(summary),
+    )
 
 
 @app.get("/api/pages/<slug>")
