@@ -2,6 +2,8 @@
 
 **You are a coding agent implementing Phase 2 of the TOFD website rebuild.** This document is your complete task brief.
 
+> **Note (added after Phase 1.1):** the homepage is a special-layout page with its own schema (`slides` + `sidebar`, see `planning/phases/phase-1.1-homepage-structure.md`) — it is NOT edited with the generic page form built in this phase. The "reuse the Phase 1 form" language below applies to the generic title + body page form for the informational pages; the header/footer built in Phase 1.1 become the shared layout, and the menu bar goes in that header here.
+
 ## Prerequisites — Verify Before Starting
 
 - Phase 1 is complete and confirmed working: the homepage can be edited through the admin app and renders on the public site via the `tofd-pages` table and API.
