@@ -131,6 +131,14 @@ resource "aws_apigatewayv2_route" "health" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
+# Public list of saved pages (admin pages list + any future consumers).
+# Distinct from GET /api/pages/{slug} — API Gateway prefers the exact match.
+resource "aws_apigatewayv2_route" "list_pages" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api/pages"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
 resource "aws_apigatewayv2_route" "get_page" {
   api_id    = aws_apigatewayv2_api.api.id
   route_key = "GET /api/pages/{slug}"
