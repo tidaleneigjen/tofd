@@ -127,10 +127,12 @@ body {
 }
 
 /* In-flow (not absolute) so the slide grows to fit long text instead of
-   clipping it; the image still covers the whole grown slide. */
+   clipping it; the image still covers the whole grown slide. Side padding
+   clears the prev/next arrows (40px + margin) and the pause button; bottom
+   padding reserves the dots strip so text never touches the dots. */
 .slide-overlay {
   position: relative;
-  padding: 3rem 1.25rem 1.25rem;
+  padding: 3rem 3.5rem 2.5rem;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.35) 60%, transparent);
   color: #fff;
 }
@@ -145,7 +147,7 @@ body {
 
 .slide-overlay p {
   margin: 0 0 0.6rem;
-  font-size: 0.98rem;
+  font-size: 1rem;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
 }
 
@@ -191,12 +193,15 @@ body {
 
 .carousel-dots {
   position: absolute;
-  bottom: 12px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   gap: 8px;
   z-index: 2;
+  padding: 5px 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 999px;
 }
 
 .carousel-dot {
@@ -263,7 +268,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 0.75rem 2rem;
   max-width: var(--column-width);
   width: 100%;
