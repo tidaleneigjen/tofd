@@ -124,3 +124,92 @@ button.link:hover {
   border: 1px solid #9c9;
   color: #265c26;
 }
+
+/* --- Homepage editor ---------------------------------------------------- */
+
+.section-title {
+  font-size: 1.1rem;
+  margin: 1.5rem 0 0.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2d9c8;
+}
+
+.slide-editor {
+  border: 1px solid #ddd5c7;
+  border-radius: 8px;
+  padding: 1rem 1.1rem 1.1rem;
+  margin: 0 0 1rem;
+}
+
+.slide-editor legend {
+  font-weight: 700;
+  padding: 0 0.4rem;
+}
+
+.slide-editor-actions {
+  float: right;
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.image-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.image-picker select {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: #2b2620;
+  background: #fff;
+  border: 1px solid #b8ad99;
+  border-radius: 6px;
+  padding: 0.55rem 0.7rem;
+}
+
+.image-picker select:focus-visible {
+  outline: 3px solid #8a6d3b;
+  outline-offset: 2px;
+}
+
+.image-preview {
+  width: 96px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #ddd5c7;
+  flex-shrink: 0;
+}
+
+button.small {
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  background: #efe9dc;
+  color: #4a3d28;
+}
+
+button.small:hover:not(:disabled) {
+  background: #e2d9c6;
+}
+
+button.small.danger {
+  background: #f6e3e0;
+  color: #8c2f21;
+}
+
+button.small.danger:hover:not(:disabled) {
+  background: #ecd0cb;
+}
+
+button.secondary {
+  background: #efe9dc;
+  color: #4a3d28;
+  margin-bottom: 0.5rem;
+}
+
+button.secondary:hover:not(:disabled) {
+  background: #e2d9c6;
+}
