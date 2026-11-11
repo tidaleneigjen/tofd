@@ -8,6 +8,9 @@ const devApiTarget = process.env.VITE_DEV_API_TARGET || "https://tofd.graycandle
 
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: "jsdom",
+  },
   server: {
     proxy: {
       "/api": {

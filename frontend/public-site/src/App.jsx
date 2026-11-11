@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import Carousel from "./components/Carousel";
 import { DEFAULT_PAGE } from "./defaults";
-
-const DEFAULT_HERO_IMAGE = "/temple-ritual.jpg";
+import { FOOTER, SITE_NAME } from "./site";
 
 function paragraphs(text) {
   return String(text ?? "")
@@ -10,9 +10,20 @@ function paragraphs(text) {
     .filter(Boolean);
 }
 
+// Fall back to defaults per missing part: a legacy Phase 1 item (no
+// slides/sidebar) or a partially-filled item still renders.
+function mergeWithDefaults(data) {
+  const slides =
+    Array.isArray(data?.slides) && data.slides.length > 0 ? data.slides : DEFAULT_PAGE.slides;
+  const sidebar =
+    data?.sidebar && typeof data.sidebar.title === "string" && typeof data.sidebar.text === "string"
+      ? data.sidebar
+      : DEFAULT_PAGE.sidebar;
+  return { slides, sidebar };
+}
+
 export default function App() {
   const [page, setPage] = useState(null); // null = loading
-  const [heroImage, setHeroImage] = useState(DEFAULT_HERO_IMAGE);
 
   useEffect(() => {
     let cancelled = false;
@@ -22,10 +33,7 @@ export default function App() {
         return res.json();
       })
       .then((data) => {
-        if (!cancelled) {
-          setPage(data);
-          if (data.heroImageUrl) setHeroImage(data.heroImageUrl);
-        }
+        if (!cancelled) setPage(mergeWithDefaults(data));
       })
       .catch(() => {
         if (!cancelled) setPage(DEFAULT_PAGE);
@@ -36,27 +44,47 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    document.title = "Temple of the Feminine Divine";
+    document.title = SITE_NAME;
   }, []);
 
-  if (!page) {
-    return (
-      <main className="page">
-        <p className="loading">Loading…</p>
-      </main>
-    );
-  }
-
-  const heroHeading = page.heroHeading || DEFAULT_PAGE.heroHeading;
+  const year = new Date().getFullYear();
 
   return (
-    <main className="page">
-      <img className="hero-image" src={heroImage} alt={`A ritual gathering — ${heroHeading}`} />
-      <h1>{heroHeading}</h1>
-      <p className="mission">{page.missionStatement || DEFAULT_PAGE.missionStatement}</p>
-      {paragraphs(page.body || DEFAULT_PAGE.body).map((para, i) => (
-        <p key={i}>{para}</p>
-      ))}
-    </main>
+    <div className="site">
+      <header className="site-header">
+        <h1>{SITE_NAME}</h1>
+      </header>
+
+      {page === null ? (
+        <main className="page page--loading">
+          <p>Loading…</p>
+        </main>
+      ) : (
+        <main className="page home">
+          <div className="home-grid">
+            <Carousel slides={page.slides} />
+            <aside className="sidebar">
+              <h2 className="sidebar-title">{page.sidebar.title}</h2>
+              {paragraphs(page.sidebar.text).map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </aside>
+          </div>
+        </main>
+      )}
+
+      <footer className="site-footer">
+        <div className="footer-contact">
+          <p className="footer-name">{SITE_NAME}</p>
+          <p>{FOOTER.address}</p>
+          <p>
+            <a href={`mailto:${FOOTER.email}`}>{FOOTER.email}</a>
+          </p>
+        </div>
+        <p className="footer-copy">
+          © {year} {SITE_NAME} 501c3
+        </p>
+      </footer>
+    </div>
   );
 }
